@@ -249,55 +249,55 @@ export default function AgendaView({
                 ) : (
                   <li
                     key={activity.id}
-                    className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-primary-soft/60 transition cursor-pointer"
+                    className="group rounded-lg px-2 py-1.5 hover:bg-primary-soft/60 transition cursor-pointer"
                     onClick={() => setEditingId(activity.id)}
                   >
-                    <span className="text-base shrink-0">{typeInfo(activity.type).emoji}</span>
-                    {activity.time && (
-                      <span className="text-xs text-muted font-mono w-11 shrink-0">
-                        {activity.time.slice(0, 5)}
-                      </span>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base shrink-0">{typeInfo(activity.type).emoji}</span>
+                      {activity.time && (
+                        <span className="text-xs text-muted font-mono shrink-0">
+                          {activity.time.slice(0, 5)}
+                        </span>
+                      )}
+                      <div className="flex-1 min-w-0 flex items-baseline flex-wrap gap-x-2">
                         <span className="text-sm">{activity.title}</span>
                         {activity.location && (
-                          <span className="text-xs text-muted ml-2">📍 {activity.location}</span>
+                          <span className="text-xs text-muted">📍 {activity.location}</span>
                         )}
                         {(vouchersByActivity.get(activity.id)?.length ?? 0) > 0 && (
-                          <span className="text-xs text-muted ml-2">📎 {vouchersByActivity.get(activity.id)!.length}</span>
+                          <span className="text-xs text-muted">📎 {vouchersByActivity.get(activity.id)!.length}</span>
                         )}
                         {expenseByActivity.has(activity.id) && (
-                          <span className="text-xs text-muted ml-2">
+                          <span className="text-xs text-muted">
                             💰 {formatBRL(Number(expenseByActivity.get(activity.id)!.amount_brl))}
                           </span>
                         )}
                       </div>
-                      {activity.notes && (
-                        <div className="text-xs text-muted/90 mt-0.5 whitespace-pre-wrap break-words">
-                          📝 {activity.notes}
-                        </div>
-                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cycleStatus(activity);
+                        }}
+                        className={`text-[10px] font-medium rounded-full px-1.5 py-0.5 shrink-0 ${STATUS_STYLE[activity.status]}`}
+                      >
+                        {activity.status}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeActivity(activity);
+                        }}
+                        className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0 px-1"
+                        aria-label="remover"
+                      >
+                        ✕
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        cycleStatus(activity);
-                      }}
-                      className={`text-[10px] font-medium rounded-full px-2 py-0.5 shrink-0 ${STATUS_STYLE[activity.status]}`}
-                    >
-                      {activity.status}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeActivity(activity);
-                      }}
-                      className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0 px-1"
-                      aria-label="remover"
-                    >
-                      ✕
-                    </button>
+                    {activity.notes && (
+                      <div className="text-xs text-muted/90 mt-1 pl-6 whitespace-pre-wrap break-words">
+                        📝 {activity.notes}
+                      </div>
+                    )}
                   </li>
                 )
               )}
