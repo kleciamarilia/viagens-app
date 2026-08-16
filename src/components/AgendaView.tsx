@@ -259,17 +259,22 @@ export default function AgendaView({
                       </span>
                     )}
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm">{activity.title}</span>
-                      {activity.location && (
-                        <span className="text-xs text-muted ml-2">📍 {activity.location}</span>
-                      )}
-                      {(vouchersByActivity.get(activity.id)?.length ?? 0) > 0 && (
-                        <span className="text-xs text-muted ml-2">📎 {vouchersByActivity.get(activity.id)!.length}</span>
-                      )}
-                      {expenseByActivity.has(activity.id) && (
-                        <span className="text-xs text-muted ml-2">
-                          💰 {formatBRL(Number(expenseByActivity.get(activity.id)!.amount_brl))}
-                        </span>
+                      <div>
+                        <span className="text-sm">{activity.title}</span>
+                        {activity.location && (
+                          <span className="text-xs text-muted ml-2">📍 {activity.location}</span>
+                        )}
+                        {(vouchersByActivity.get(activity.id)?.length ?? 0) > 0 && (
+                          <span className="text-xs text-muted ml-2">📎 {vouchersByActivity.get(activity.id)!.length}</span>
+                        )}
+                        {expenseByActivity.has(activity.id) && (
+                          <span className="text-xs text-muted ml-2">
+                            💰 {formatBRL(Number(expenseByActivity.get(activity.id)!.amount_brl))}
+                          </span>
+                        )}
+                      </div>
+                      {activity.notes && (
+                        <div className="text-xs text-muted/90 mt-0.5 truncate">📝 {activity.notes}</div>
                       )}
                     </div>
                     <button
