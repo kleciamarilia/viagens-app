@@ -274,7 +274,9 @@ export default function AgendaView({
                         )}
                       </div>
                       {activity.notes && (
-                        <div className="text-xs text-muted/90 mt-0.5 truncate">📝 {activity.notes}</div>
+                        <div className="text-xs text-muted/90 mt-0.5 whitespace-pre-wrap break-words">
+                          📝 {activity.notes}
+                        </div>
                       )}
                     </div>
                     <button
