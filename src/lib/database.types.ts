@@ -27,12 +27,12 @@ export interface ExpenseCategory {
   created_at: string;
 }
 
-export interface ItineraryDay {
+export interface Stay {
   id: string;
   trip_id: string;
-  day_number: number;
-  date: string;
-  city: string | null;
+  city: string;
+  start_date: string;
+  end_date: string;
   lodging_name: string | null;
   lodging_link: string | null;
   transport: string | null;
@@ -44,7 +44,6 @@ export interface ItineraryDay {
 export interface Activity {
   id: string;
   trip_id: string;
-  itinerary_day_id: string | null;
   date: string;
   time: string | null;
   title: string;

@@ -7,22 +7,6 @@ import { pickTripColor } from "@/lib/tripStyle";
 
 const EMOJIS = ["✈️", "🏔️", "🏖️", "🍺", "🗺️", "🚂", "🏰", "🌍"];
 
-function buildDayRange(startISO: string, endISO: string): string[] {
-  const [sy, sm, sd] = startISO.split("-").map(Number);
-  const [ey, em, ed] = endISO.split("-").map(Number);
-  const start = new Date(sy, sm - 1, sd);
-  const end = new Date(ey, em - 1, ed);
-  const dates: string[] = [];
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    dates.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-        d.getDate()
-      ).padStart(2, "0")}`
-    );
-  }
-  return dates;
-}
-
 export default function NewTripForm({ onDone }: { onDone?: () => void }) {
   const router = useRouter();
   const supabase = createClient();
@@ -57,17 +41,6 @@ export default function NewTripForm({ onDone }: { onDone?: () => void }) {
       setError(error.message);
       setLoading(false);
       return;
-    }
-
-    if (data) {
-      const days = buildDayRange(startDate, endDate).map((date, i) => ({
-        trip_id: data.id,
-        day_number: i + 1,
-        date,
-      }));
-      if (days.length > 0) {
-        await supabase.from("itinerary_days").insert(days);
-      }
     }
 
     setOpen(false);

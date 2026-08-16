@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { formatDate, formatWeekday } from "@/lib/format";
-import type { Activity, ActivityStatus, ActivityType, ItineraryDay } from "@/lib/database.types";
+import type { Activity, ActivityStatus, ActivityType } from "@/lib/database.types";
+
+export interface AgendaDay {
+  date: string;
+  city: string | null;
+}
 
 const TYPES: { value: ActivityType; label: string; emoji: string }[] = [
   { value: "atracao", label: "Atração", emoji: "🏛️" },
@@ -35,7 +40,7 @@ export default function AgendaView({
   activities,
 }: {
   tripId: string;
-  days: ItineraryDay[];
+  days: AgendaDay[];
   activities: Activity[];
 }) {
   const supabase = createClient();
@@ -55,12 +60,11 @@ export default function AgendaView({
     return map;
   }, [list]);
 
-  async function addActivity(day: ItineraryDay, values: { title: string; type: ActivityType; time: string; location: string }) {
+  async function addActivity(day: AgendaDay, values: { title: string; type: ActivityType; time: string; location: string }) {
     const { data, error } = await supabase
       .from("activities")
       .insert({
         trip_id: tripId,
-        itinerary_day_id: day.id,
         date: day.date,
         time: values.time || null,
         title: values.title,
@@ -96,7 +100,7 @@ export default function AgendaView({
       {days.map((day) => {
         const dayActivities = byDate.get(day.date) ?? [];
         return (
-          <div key={day.id} className="rounded-xl border border-border bg-surface shadow-sm p-4 sm:p-5">
+          <div key={day.date} className="rounded-xl border border-border bg-surface shadow-sm p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-baseline gap-2">
                 <span className="text-xs text-muted uppercase">{formatWeekday(day.date)}</span>
@@ -104,14 +108,14 @@ export default function AgendaView({
                 {day.city && <span className="text-sm text-muted">· {day.city}</span>}
               </div>
               <button
-                onClick={() => setFormOpenFor(formOpenFor === day.id ? null : day.id)}
+                onClick={() => setFormOpenFor(formOpenFor === day.date ? null : day.date)}
                 className="text-xs font-medium text-primary hover:text-primary-dark border border-border rounded-lg px-2.5 py-1 hover:bg-primary-soft transition"
               >
                 + passeio
               </button>
             </div>
 
-            {dayActivities.length === 0 && formOpenFor !== day.id && (
+            {dayActivities.length === 0 && formOpenFor !== day.date && (
               <p className="text-xs text-muted italic">Nada planejado ainda.</p>
             )}
 
@@ -150,7 +154,7 @@ export default function AgendaView({
               ))}
             </ul>
 
-            {formOpenFor === day.id && (
+            {formOpenFor === day.date && (
               <AddActivityForm onAdd={(values) => addActivity(day, values)} onCancel={() => setFormOpenFor(null)} />
             )}
           </div>
