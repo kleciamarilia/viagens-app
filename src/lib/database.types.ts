@@ -56,10 +56,20 @@ export interface Activity {
   updated_at: string;
 }
 
+export interface ActivityVoucher {
+  id: string;
+  activity_id: string;
+  file_name: string;
+  file_path: string;
+  file_url: string;
+  uploaded_at: string;
+}
+
 export interface Expense {
   id: string;
   trip_id: string;
   category_id: string | null;
+  activity_id: string | null;
   description: string;
   expense_date: string;
   amount: number;

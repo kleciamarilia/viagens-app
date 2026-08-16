@@ -39,6 +39,22 @@ export default function ExpensesView({
       .sort((a, b) => b.value - a.value);
   }, [list, categoryById]);
 
+  const byDate = useMemo(() => {
+    const map = new Map<string, Expense[]>();
+    for (const e of list) {
+      const arr = map.get(e.expense_date) ?? [];
+      arr.push(e);
+      map.set(e.expense_date, arr);
+    }
+    return [...map.entries()]
+      .map(([date, items]) => ({
+        date,
+        items,
+        total: items.reduce((s, e) => s + Number(e.amount_brl), 0),
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [list]);
+
   async function addExpense(values: {
     description: string;
     category_id: string;
@@ -128,44 +144,54 @@ export default function ExpensesView({
           <AddExpenseForm categories={categories} onAdd={addExpense} />
         )}
 
-        <div className="mt-3 rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
-          {list.length === 0 && (
-            <p className="text-sm text-muted italic p-4">
-              Nenhuma despesa ainda — adicione custos antes da viagem (passagem, hotel, seguro) ou durante a viagem.
-            </p>
-          )}
-          <ul className="divide-y divide-border">
-            {list.map((expense) => {
-              const cat = expense.category_id ? categoryById.get(expense.category_id) : undefined;
-              return (
-                <li key={expense.id} className="group flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-primary-soft/50 transition">
-                  <span className="text-muted w-16 shrink-0">{formatDate(expense.expense_date)}</span>
-                  <span className="w-8 shrink-0 text-center">{cat?.emoji ?? "🔖"}</span>
-                  <span className="flex-1 min-w-0 truncate">{expense.description}</span>
-                  {expense.payment_method && (
-                    <span className="text-xs text-muted hidden sm:inline shrink-0">
-                      {expense.payment_method}
-                    </span>
-                  )}
-                  {expense.currency !== "BRL" && (
-                    <span className="text-xs text-muted shrink-0">
-                      {expense.currency} {Number(expense.amount).toFixed(2)}
-                    </span>
-                  )}
-                  <span className="font-medium w-24 text-right shrink-0">
-                    {formatBRL(Number(expense.amount_brl))}
-                  </span>
-                  <button
-                    onClick={() => removeExpense(expense)}
-                    className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0"
-                    aria-label="remover"
-                  >
-                    ✕
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+        {list.length === 0 && (
+          <p className="text-sm text-muted italic p-4 mt-3 rounded-xl border border-border bg-surface">
+            Nenhuma despesa ainda — adicione custos antes da viagem (passagem, hotel, seguro) ou durante a viagem.
+          </p>
+        )}
+
+        <div className="mt-3 space-y-4">
+          {byDate.map((group) => (
+            <div key={group.date}>
+              <div className="flex items-baseline justify-between px-1 mb-1.5">
+                <h4 className="text-sm font-semibold text-primary-dark">{formatDate(group.date)}</h4>
+                <span className="text-xs text-muted">{formatBRL(group.total)}</span>
+              </div>
+              <div className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
+                <ul className="divide-y divide-border">
+                  {group.items.map((expense) => {
+                    const cat = expense.category_id ? categoryById.get(expense.category_id) : undefined;
+                    return (
+                      <li key={expense.id} className="group flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-primary-soft/50 transition">
+                        <span className="w-8 shrink-0 text-center">{cat?.emoji ?? "🔖"}</span>
+                        <span className="flex-1 min-w-0 truncate">{expense.description}</span>
+                        {expense.payment_method && (
+                          <span className="text-xs text-muted hidden sm:inline shrink-0">
+                            {expense.payment_method}
+                          </span>
+                        )}
+                        {expense.currency !== "BRL" && (
+                          <span className="text-xs text-muted shrink-0">
+                            {expense.currency} {Number(expense.amount).toFixed(2)}
+                          </span>
+                        )}
+                        <span className="font-medium w-24 text-right shrink-0">
+                          {formatBRL(Number(expense.amount_brl))}
+                        </span>
+                        <button
+                          onClick={() => removeExpense(expense)}
+                          className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0"
+                          aria-label="remover"
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>
