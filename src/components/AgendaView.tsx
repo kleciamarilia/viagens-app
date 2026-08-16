@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { formatDate, formatWeekday, formatBRL } from "@/lib/format";
+import { generateContentIdeas } from "@/lib/contentIdeas";
 import type {
   Activity,
-  ActivityStatus,
   ActivityType,
   ActivityVoucher,
   Expense,
@@ -22,23 +22,17 @@ const TYPES: { value: ActivityType; label: string; emoji: string }[] = [
   { value: "experiencia", label: "Experiência", emoji: "🍻" },
   { value: "comida", label: "Comida", emoji: "🍽️" },
   { value: "transporte", label: "Transporte", emoji: "🚌" },
+  { value: "tour_guiado", label: "Tour guiado", emoji: "🧭" },
   { value: "outro", label: "Outro", emoji: "✨" },
 ];
 
-const STATUS_STYLE: Record<ActivityStatus, string> = {
-  planejado: "bg-slate-100 text-slate-600",
-  confirmado: "bg-blue-100 text-blue-700",
-  concluido: "bg-green-100 text-green-700",
-};
-
-const NEXT_STATUS: Record<ActivityStatus, ActivityStatus> = {
-  planejado: "confirmado",
-  confirmado: "concluido",
-  concluido: "planejado",
-};
-
 function typeInfo(type: ActivityType) {
-  return TYPES.find((t) => t.value === type) ?? TYPES[4];
+  return TYPES.find((t) => t.value === type) ?? TYPES[TYPES.length - 1];
+}
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export default function AgendaView({
@@ -62,6 +56,29 @@ export default function AgendaView({
   const [expenseList, setExpenseList] = useState<Expense[]>(expenses);
   const [formOpenFor, setFormOpenFor] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [contentOpenFor, setContentOpenFor] = useState<string | null>(null);
+  const today = useMemo(() => todayISO(), []);
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(
+    () => new Set(days.filter((d) => d.date < today).map((d) => d.date))
+  );
+  const firstExpandedRef = useRef<HTMLDivElement | null>(null);
+  const scrolledRef = useRef(false);
+
+  useEffect(() => {
+    if (!scrolledRef.current && firstExpandedRef.current) {
+      firstExpandedRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrolledRef.current = true;
+    }
+  }, []);
+
+  function toggleCollapse(date: string) {
+    setCollapsedDates((prev) => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  }
 
   const byDate = useMemo(() => {
     const map = new Map<string, Activity[]>();
@@ -158,12 +175,6 @@ export default function AgendaView({
     await supabase.from("activities").update(patch).eq("id", id);
   }
 
-  async function cycleStatus(activity: Activity) {
-    const next = NEXT_STATUS[activity.status];
-    setList((prev) => prev.map((a) => (a.id === activity.id ? { ...a, status: next } : a)));
-    await supabase.from("activities").update({ status: next }).eq("id", activity.id);
-  }
-
   async function removeActivity(activity: Activity) {
     setList((prev) => prev.filter((a) => a.id !== activity.id));
     await supabase.from("activities").delete().eq("id", activity.id);
@@ -201,18 +212,48 @@ export default function AgendaView({
     return <p className="text-muted text-sm">Nenhum dia encontrado para essa viagem ainda.</p>;
   }
 
+  const firstExpandedDate = days.find((d) => !collapsedDates.has(d.date))?.date;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {days.map((day) => {
         const dayActivities = byDate.get(day.date) ?? [];
+        const collapsed = collapsedDates.has(day.date);
+
+        if (collapsed) {
+          return (
+            <button
+              key={day.date}
+              onClick={() => toggleCollapse(day.date)}
+              className="w-full flex items-center justify-between rounded-lg border border-border bg-surface/70 px-4 py-2 text-left hover:bg-primary-soft/40 transition"
+            >
+              <span className="text-xs text-muted">
+                <span className="uppercase">{formatWeekday(day.date)}</span>{" "}
+                <span className="font-medium text-foreground/70">{formatDate(day.date)}</span>
+                {day.city && ` · ${day.city}`}
+              </span>
+              <span className="text-xs text-muted">
+                {dayActivities.length > 0 ? `${dayActivities.length} passeio(s)` : "sem passeios"} ▸
+              </span>
+            </button>
+          );
+        }
+
         return (
-          <div key={day.date} className="rounded-xl border border-border bg-surface shadow-sm p-4 sm:p-5">
+          <div
+            key={day.date}
+            ref={day.date === firstExpandedDate ? firstExpandedRef : undefined}
+            className="rounded-xl border border-border bg-surface shadow-sm p-4 sm:p-5"
+          >
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-baseline gap-2">
+              <button
+                onClick={() => toggleCollapse(day.date)}
+                className="flex items-baseline gap-2 text-left hover:opacity-70 transition"
+              >
                 <span className="text-xs text-muted uppercase">{formatWeekday(day.date)}</span>
                 <span className="font-semibold text-primary-dark">{formatDate(day.date)}</span>
                 {day.city && <span className="text-sm text-muted">· {day.city}</span>}
-              </div>
+              </button>
               <button
                 onClick={() => setFormOpenFor(formOpenFor === day.date ? null : day.date)}
                 className="text-xs font-medium text-primary hover:text-primary-dark border border-border rounded-lg px-2.5 py-1 hover:bg-primary-soft transition"
@@ -276,15 +317,6 @@ export default function AgendaView({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          cycleStatus(activity);
-                        }}
-                        className={`text-[10px] font-medium rounded-full px-1.5 py-0.5 shrink-0 ${STATUS_STYLE[activity.status]}`}
-                      >
-                        {activity.status}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
                           removeActivity(activity);
                         }}
                         className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0 px-1"
@@ -310,9 +342,64 @@ export default function AgendaView({
                 onCancel={() => setFormOpenFor(null)}
               />
             )}
+
+            {dayActivities.length > 0 && (
+              <ContentIdeasSection
+                open={contentOpenFor === day.date}
+                onToggle={() => setContentOpenFor(contentOpenFor === day.date ? null : day.date)}
+                activities={dayActivities}
+                city={day.city}
+              />
+            )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function ContentIdeasSection({
+  open,
+  onToggle,
+  activities,
+  city,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  activities: Activity[];
+  city: string | null;
+}) {
+  const ideas = useMemo(() => generateContentIdeas(activities, city), [activities, city]);
+  if (ideas.reels.length === 0) return null;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border">
+      <button
+        onClick={onToggle}
+        className="text-xs font-medium text-primary hover:text-primary-dark flex items-center gap-1"
+      >
+        💡 Ideias de conteúdo {open ? "▾" : "▸"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 bg-primary-soft/40 rounded-lg p-3">
+          <div>
+            <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Reels</p>
+            <ul className="space-y-1.5">
+              {ideas.reels.map((idea, i) => (
+                <li key={i} className="text-xs text-foreground/90">
+                  {idea}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {ideas.youtube && (
+            <div>
+              <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">YouTube</p>
+              <p className="text-xs text-foreground/90">{ideas.youtube}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

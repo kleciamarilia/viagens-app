@@ -1,5 +1,5 @@
 export type TripStatus = "planned" | "active" | "done";
-export type ActivityType = "atracao" | "experiencia" | "comida" | "transporte" | "outro";
+export type ActivityType = "atracao" | "experiencia" | "comida" | "transporte" | "tour_guiado" | "outro";
 export type ActivityStatus = "planejado" | "confirmado" | "concluido";
 
 export interface Trip {
