@@ -28,6 +28,11 @@ export function daysBetween(startISO: string, endISO: string) {
   return Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
+export function formatDateRange(startISO: string, endISO: string) {
+  if (startISO === endISO) return formatDate(startISO);
+  return `${formatDate(startISO)} – ${formatDate(endISO)}`;
+}
+
 export function daysUntil(dateISO: string) {
   const [y, m, d] = dateISO.split("-").map(Number);
   const target = new Date(y, m - 1, d);
