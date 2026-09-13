@@ -65,6 +65,18 @@ export interface ActivityVoucher {
   uploaded_at: string;
 }
 
+export interface Todo {
+  id: string;
+  trip_id: string;
+  title: string;
+  done: boolean;
+  due_date: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Expense {
   id: string;
   trip_id: string;
@@ -80,4 +92,3 @@ export interface Expense {
   created_at: string;
   updated_at: string;
 }
-

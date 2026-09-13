@@ -10,6 +10,7 @@ export default function TripTabs({ tripId }: { tripId: string }) {
     { href: `/trips/${tripId}/roteiro`, label: "Roteiro", icon: "🗺️" },
     { href: `/trips/${tripId}/passeios`, label: "Passeios", icon: "📅" },
     { href: `/trips/${tripId}/despesas`, label: "Despesas", icon: "💰" },
+    { href: `/trips/${tripId}/providencias`, label: "Providências", icon: "✅" },
   ];
 
   return (
