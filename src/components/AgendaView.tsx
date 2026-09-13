@@ -308,14 +308,6 @@ export default function AgendaView({
                     className="group rounded-xl border border-border overflow-hidden hover:border-primary/50 transition cursor-pointer bg-white"
                     onClick={() => setEditingId(activity.id)}
                   >
-                    {activity.image_url && (
-                      <img
-                        src={activity.image_url}
-                        alt={activity.title}
-                        className="w-full h-40 sm:h-48 object-cover"
-                        loading="lazy"
-                      />
-                    )}
                     <div className="p-4">
                       <div className="flex items-start gap-2">
                         <span className="text-xl shrink-0 leading-none mt-0.5">{typeInfo(activity.type).emoji}</span>
@@ -513,7 +505,6 @@ function EditActivityForm({
   const [type, setType] = useState<ActivityType>(activity.type);
   const [time, setTime] = useState(activity.time ? activity.time.slice(0, 5) : "");
   const [location, setLocation] = useState(activity.location ?? "");
-  const [imageUrl, setImageUrl] = useState(activity.image_url ?? "");
   const [notes, setNotes] = useState(activity.notes ?? "");
   const [uploading, setUploading] = useState(false);
   const [costEnabled, setCostEnabled] = useState(false);
@@ -531,7 +522,6 @@ function EditActivityForm({
       type,
       time: time || null,
       location: location.trim() || null,
-      image_url: imageUrl.trim() || null,
       notes: notes.trim() || null,
     });
     if (costEnabled && !expense) {
@@ -593,16 +583,6 @@ function EditActivityForm({
             className="w-full rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 bg-white"
           />
         </div>
-      </div>
-
-      <div>
-        <label className="block text-[11px] font-medium text-muted mb-0.5">Foto (URL)</label>
-        <input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="opcional — cole o link de uma imagem"
-          className="w-full rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 bg-white"
-        />
       </div>
 
       <div>
