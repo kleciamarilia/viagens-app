@@ -173,6 +173,12 @@ export default function AgendaView({
     }
   }
 
+  async function editLinkedExpense(expense: Expense, categoryId: string, amount: number) {
+    const patch = { category_id: categoryId || null, amount, amount_brl: amount };
+    setExpenseList((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...patch } : e)));
+    await supabase.from("expenses").update(patch).eq("id", expense.id);
+  }
+
   async function removeLinkedExpense(expense: Expense) {
     setExpenseList((prev) => prev.filter((e) => e.id !== expense.id));
     await supabase.from("expenses").delete().eq("id", expense.id);
@@ -292,6 +298,7 @@ export default function AgendaView({
                       onAddVoucher={(file) => addVoucher(activity.id, file)}
                       onRemoveVoucher={removeVoucher}
                       onAddCost={(categoryId, amount) => createLinkedExpense(activity, categoryId, amount)}
+                      onEditCost={(exp, categoryId, amount) => editLinkedExpense(exp, categoryId, amount)}
                       onRemoveCost={removeLinkedExpense}
                     />
                   </li>
@@ -472,6 +479,7 @@ function EditActivityForm({
   onAddVoucher,
   onRemoveVoucher,
   onAddCost,
+  onEditCost,
   onRemoveCost,
 }: {
   activity: Activity;
@@ -484,6 +492,7 @@ function EditActivityForm({
   onAddVoucher: (file: File) => void;
   onRemoveVoucher: (voucher: ActivityVoucher) => void;
   onAddCost: (categoryId: string, amount: number) => void;
+  onEditCost: (expense: Expense, categoryId: string, amount: number) => void;
   onRemoveCost: (expense: Expense) => void;
 }) {
   const [title, setTitle] = useState(activity.title);
@@ -495,6 +504,9 @@ function EditActivityForm({
   const [costEnabled, setCostEnabled] = useState(false);
   const [costCategoryId, setCostCategoryId] = useState(categories[0]?.id ?? "");
   const [costAmount, setCostAmount] = useState("");
+  const [editingCost, setEditingCost] = useState(false);
+  const [editCostCategoryId, setEditCostCategoryId] = useState(expense?.category_id ?? categories[0]?.id ?? "");
+  const [editCostAmount, setEditCostAmount] = useState(expense ? String(expense.amount).replace(".", ",") : "");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -611,20 +623,74 @@ function EditActivityForm({
 
       <div>
         {expense ? (
-          <div className="flex items-center gap-1.5 text-xs font-medium bg-white border border-border rounded-lg px-2.5 py-1.5 w-fit">
-            <span>{categoryById.get(expense.category_id ?? "")?.emoji ?? "💰"}</span>
-            <span>{formatCost(expense)}</span>
-            <span className="text-muted">
-              {expense.currency !== "BRL" ? "aguardando conversão na aba Despesas" : "lançado nas despesas"}
-            </span>
-            <button
-              type="button"
-              onClick={() => onRemoveCost(expense)}
-              className="text-muted hover:text-red-600 ml-1"
-            >
-              ✕
-            </button>
-          </div>
+          editingCost ? (
+            <div className="flex flex-wrap items-center gap-2 bg-white border border-border rounded-lg px-2.5 py-1.5 w-fit">
+              <select
+                value={editCostCategoryId}
+                onChange={(e) => setEditCostCategoryId(e.target.value)}
+                className="rounded-lg border border-border px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.emoji} {c.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                inputMode="decimal"
+                value={editCostAmount}
+                onChange={(e) => setEditCostAmount(e.target.value)}
+                placeholder="Valor em €"
+                className="w-24 rounded-lg border border-border px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const amt = parseFloat(editCostAmount.replace(",", "."));
+                  if (!Number.isNaN(amt) && amt > 0) {
+                    onEditCost(expense, editCostCategoryId, amt);
+                    setEditingCost(false);
+                  }
+                }}
+                className="text-xs font-medium text-primary hover:text-primary-dark"
+              >
+                salvar
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingCost(false)}
+                className="text-xs text-muted hover:text-foreground"
+              >
+                cancelar
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs font-medium bg-white border border-border rounded-lg px-2.5 py-1.5 w-fit">
+              <span>{categoryById.get(expense.category_id ?? "")?.emoji ?? "💰"}</span>
+              <span>{formatCost(expense)}</span>
+              <span className="text-muted">
+                {expense.currency !== "BRL" ? "aguardando conversão na aba Despesas" : "lançado nas despesas"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditCostCategoryId(expense.category_id ?? categories[0]?.id ?? "");
+                  setEditCostAmount(String(expense.amount).replace(".", ","));
+                  setEditingCost(true);
+                }}
+                className="text-muted hover:text-primary ml-1"
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemoveCost(expense)}
+                className="text-muted hover:text-red-600"
+              >
+                ✕
+              </button>
+            </div>
+          )
         ) : (
           <CostFields
             categories={categories}
