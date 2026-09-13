@@ -21,6 +21,7 @@ export default function ExpensesView({
   const supabase = createClient();
   const [list, setList] = useState<Expense[]>(expenses);
   const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [rateInput, setRateInput] = useState(eurRate ? String(eurRate).replace(".", ",") : "");
   const [savingRate, setSavingRate] = useState(false);
 
@@ -77,7 +78,7 @@ export default function ExpensesView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, rate]);
 
-  async function addExpense(values: {
+  type ExpenseFormValues = {
     description: string;
     category_id: string;
     expense_date: string;
@@ -85,7 +86,9 @@ export default function ExpensesView({
     currency: string;
     amount_brl: number;
     payment_method: string;
-  }) {
+  };
+
+  async function addExpense(values: ExpenseFormValues) {
     const { data, error } = await supabase
       .from("expenses")
       .insert({
@@ -105,6 +108,21 @@ export default function ExpensesView({
       setList((prev) => [data as Expense, ...prev]);
       setFormOpen(false);
     }
+  }
+
+  async function updateExpense(expense: Expense, values: ExpenseFormValues) {
+    const patch = {
+      category_id: values.category_id || null,
+      description: values.description,
+      expense_date: values.expense_date,
+      amount: values.amount,
+      currency: values.currency,
+      amount_brl: values.amount_brl,
+      payment_method: values.payment_method || null,
+    };
+    setList((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...patch } : e)));
+    setEditingId(null);
+    await supabase.from("expenses").update(patch).eq("id", expense.id);
   }
 
   async function removeExpense(expense: Expense) {
@@ -188,7 +206,7 @@ export default function ExpensesView({
         </div>
 
         {formOpen && (
-          <AddExpenseForm categories={categories} onAdd={addExpense} />
+          <ExpenseForm categories={categories} onSubmit={addExpense} onCancel={() => setFormOpen(false)} />
         )}
 
         {list.length === 0 && (
@@ -206,12 +224,25 @@ export default function ExpensesView({
               </div>
               <div className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
                 <ul className="divide-y divide-border">
-                  {group.items.map((expense) => {
-                    const cat = expense.category_id ? categoryById.get(expense.category_id) : undefined;
-                    const isEur = expense.currency === "EUR";
-                    return (
-                      <li key={expense.id} className="group flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-primary-soft/50 transition">
-                        <span className="w-8 shrink-0 text-center">{cat?.emoji ?? "🔖"}</span>
+                  {group.items.map((expense) =>
+                    editingId === expense.id ? (
+                      <li key={expense.id} className="p-3 bg-primary-soft/30">
+                        <ExpenseForm
+                          categories={categories}
+                          initial={expense}
+                          onSubmit={(values) => updateExpense(expense, values)}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      </li>
+                    ) : (
+                      <li
+                        key={expense.id}
+                        className="group flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-primary-soft/50 transition cursor-pointer"
+                        onClick={() => setEditingId(expense.id)}
+                      >
+                        <span className="w-8 shrink-0 text-center">
+                          {(expense.category_id ? categoryById.get(expense.category_id) : undefined)?.emoji ?? "🔖"}
+                        </span>
                         <span className="flex-1 min-w-0 truncate">{expense.description}</span>
                         {expense.payment_method && (
                           <span className="text-xs text-muted hidden sm:inline shrink-0">
@@ -219,21 +250,26 @@ export default function ExpensesView({
                           </span>
                         )}
                         <span className="font-medium w-20 text-right shrink-0">
-                          {isEur ? `€ ${Number(expense.amount).toFixed(2)}` : formatBRL(Number(expense.amount))}
+                          {expense.currency === "EUR"
+                            ? `€ ${Number(expense.amount).toFixed(2)}`
+                            : formatBRL(Number(expense.amount))}
                         </span>
                         <span className="text-xs text-muted w-24 text-right shrink-0">
-                          {isEur && !rate ? "sem cotação" : `≈ ${formatBRL(brlValue(expense))}`}
+                          {expense.currency === "EUR" && !rate ? "sem cotação" : `≈ ${formatBRL(brlValue(expense))}`}
                         </span>
                         <button
-                          onClick={() => removeExpense(expense)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeExpense(expense);
+                          }}
                           className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0"
                           aria-label="remover"
                         >
                           ✕
                         </button>
                       </li>
-                    );
-                  })}
+                    )
+                  )}
                 </ul>
               </div>
             </div>
@@ -244,12 +280,15 @@ export default function ExpensesView({
   );
 }
 
-function AddExpenseForm({
+function ExpenseForm({
   categories,
-  onAdd,
+  initial,
+  onSubmit,
+  onCancel,
 }: {
   categories: ExpenseCategory[];
-  onAdd: (values: {
+  initial?: Expense;
+  onSubmit: (values: {
     description: string;
     category_id: string;
     expense_date: string;
@@ -258,15 +297,20 @@ function AddExpenseForm({
     amount_brl: number;
     payment_method: string;
   }) => void;
+  onCancel: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
-  const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
-  const [date, setDate] = useState(today);
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("EUR");
-  const [amountBrl, setAmountBrl] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [categoryId, setCategoryId] = useState(initial?.category_id ?? categories[0]?.id ?? "");
+  const [date, setDate] = useState(initial?.expense_date ?? today);
+  const [amount, setAmount] = useState(initial ? String(initial.amount).replace(".", ",") : "");
+  const [currency, setCurrency] = useState(initial?.currency ?? "EUR");
+  const [amountBrl, setAmountBrl] = useState(
+    initial && initial.currency !== "EUR" && initial.currency !== "BRL"
+      ? String(initial.amount_brl).replace(".", ",")
+      : ""
+  );
+  const [paymentMethod, setPaymentMethod] = useState(initial?.payment_method ?? "");
 
   function handleAmountChange(v: string) {
     setAmount(v);
@@ -284,7 +328,7 @@ function AddExpenseForm({
     const amtBrl = parseFloat((amountBrl || amount).replace(",", "."));
     if (!description.trim() || Number.isNaN(amt) || Number.isNaN(amtBrl)) return;
 
-    onAdd({
+    onSubmit({
       description: description.trim(),
       category_id: categoryId,
       expense_date: date,
@@ -294,16 +338,21 @@ function AddExpenseForm({
       payment_method: paymentMethod.trim(),
     });
 
-    setDescription("");
-    setAmount("");
-    setAmountBrl("");
-    setPaymentMethod("");
+    if (!initial) {
+      setDescription("");
+      setAmount("");
+      setAmountBrl("");
+      setPaymentMethod("");
+    }
   }
+
+  const needsBrlField = currency !== "BRL" && currency !== "EUR";
 
   return (
     <form
       onSubmit={submit}
       className="rounded-xl border border-border bg-surface p-4 grid sm:grid-cols-6 gap-3 items-end shadow-sm"
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="sm:col-span-2">
         <label className="block text-[11px] font-medium text-muted mb-0.5">Descrição</label>
@@ -369,7 +418,7 @@ function AddExpenseForm({
         />
       </div>
 
-      {currency !== "BRL" && currency !== "EUR" && (
+      {needsBrlField && (
         <div>
           <label className="block text-[11px] font-medium text-muted mb-0.5">Valor em R$</label>
           <input
@@ -383,7 +432,7 @@ function AddExpenseForm({
         </div>
       )}
 
-      <div className={currency !== "BRL" && currency !== "EUR" ? "sm:col-span-2" : "sm:col-span-3"}>
+      <div className={needsBrlField ? "sm:col-span-2" : "sm:col-span-3"}>
         <label className="block text-[11px] font-medium text-muted mb-0.5">Forma de pagamento</label>
         <input
           value={paymentMethod}
@@ -393,13 +442,22 @@ function AddExpenseForm({
         />
       </div>
 
-      <div>
+      <div className="flex gap-2">
         <button
           type="submit"
-          className="w-full rounded-lg bg-primary text-white text-sm font-medium px-3 py-1.5 hover:bg-primary-dark transition"
+          className="flex-1 rounded-lg bg-primary text-white text-sm font-medium px-3 py-1.5 hover:bg-primary-dark transition"
         >
-          Adicionar
+          {initial ? "Salvar" : "Adicionar"}
         </button>
+        {initial && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-sm text-muted hover:text-foreground px-2 py-1.5"
+          >
+            cancelar
+          </button>
+        )}
       </div>
     </form>
   );
