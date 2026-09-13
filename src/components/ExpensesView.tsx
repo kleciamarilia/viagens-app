@@ -19,6 +19,8 @@ export default function ExpensesView({
   const supabase = createClient();
   const [list, setList] = useState<Expense[]>(expenses);
   const [formOpen, setFormOpen] = useState(false);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [convertValue, setConvertValue] = useState("");
 
   const categoryById = useMemo(() => {
     const map = new Map<string, ExpenseCategory>();
@@ -88,6 +90,19 @@ export default function ExpensesView({
   async function removeExpense(expense: Expense) {
     setList((prev) => prev.filter((e) => e.id !== expense.id));
     await supabase.from("expenses").delete().eq("id", expense.id);
+  }
+
+  function startConvert(expense: Expense) {
+    setConvertingId(expense.id);
+    setConvertValue(Number(expense.amount_brl).toFixed(2).replace(".", ","));
+  }
+
+  async function saveConvert(expense: Expense) {
+    const value = parseFloat(convertValue.replace(",", "."));
+    if (Number.isNaN(value) || value <= 0) return;
+    setList((prev) => prev.map((e) => (e.id === expense.id ? { ...e, amount_brl: value } : e)));
+    setConvertingId(null);
+    await supabase.from("expenses").update({ amount_brl: value }).eq("id", expense.id);
   }
 
   return (
@@ -175,9 +190,34 @@ export default function ExpensesView({
                             {expense.currency} {Number(expense.amount).toFixed(2)}
                           </span>
                         )}
-                        <span className="font-medium w-24 text-right shrink-0">
-                          {formatBRL(Number(expense.amount_brl))}
-                        </span>
+                        {convertingId === expense.id ? (
+                          <span className="flex items-center gap-1 shrink-0">
+                            <input
+                              autoFocus
+                              inputMode="decimal"
+                              value={convertValue}
+                              onChange={(e) => setConvertValue(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && saveConvert(expense)}
+                              className="w-20 rounded-lg border border-border px-1.5 py-0.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+                            />
+                            <button
+                              onClick={() => saveConvert(expense)}
+                              className="text-primary hover:text-primary-dark text-xs font-medium"
+                            >
+                              ok
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => expense.currency !== "BRL" && startConvert(expense)}
+                            className={`font-medium w-24 text-right shrink-0 ${
+                              expense.currency !== "BRL" ? "hover:underline decoration-dotted cursor-pointer" : "cursor-default"
+                            }`}
+                            title={expense.currency !== "BRL" ? "clique para converter pra R$" : undefined}
+                          >
+                            {formatBRL(Number(expense.amount_brl))}
+                          </button>
+                        )}
                         <button
                           onClick={() => removeExpense(expense)}
                           className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0"

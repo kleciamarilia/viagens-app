@@ -30,6 +30,14 @@ function typeInfo(type: ActivityType) {
   return TYPES.find((t) => t.value === type) ?? TYPES[TYPES.length - 1];
 }
 
+function formatCost(expense: Expense) {
+  if (expense.currency !== "BRL") {
+    const symbol = expense.currency === "EUR" ? "€" : `${expense.currency} `;
+    return `${symbol}${Number(expense.amount).toFixed(2)}`;
+  }
+  return formatBRL(Number(expense.amount_brl));
+}
+
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -155,7 +163,7 @@ export default function AgendaView({
         description: activity.title,
         expense_date: activity.date,
         amount,
-        currency: "BRL",
+        currency: "EUR",
         amount_brl: amount,
       })
       .select()
@@ -310,7 +318,7 @@ export default function AgendaView({
                         )}
                         {expenseByActivity.has(activity.id) && (
                           <span className="text-xs text-muted">
-                            💰 {formatBRL(Number(expenseByActivity.get(activity.id)!.amount_brl))}
+                            💰 {formatCost(expenseByActivity.get(activity.id)!)}
                           </span>
                         )}
                       </div>
@@ -425,7 +433,7 @@ function CostFields({
     <div>
       <label className="inline-flex items-center gap-1.5 text-xs font-medium text-muted cursor-pointer select-none">
         <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
-        💰 Adicionar custo (soma na aba Despesas)
+        💰 Adicionar custo em € (converte pra R$ na aba Despesas)
       </label>
       {enabled && (
         <div className="flex gap-2 mt-1.5">
@@ -444,7 +452,7 @@ function CostFields({
             inputMode="decimal"
             value={amount}
             onChange={(e) => onAmountChange(e.target.value)}
-            placeholder="Valor em R$"
+            placeholder="Valor em €"
             className="flex-1 rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 bg-white"
           />
         </div>
@@ -605,8 +613,10 @@ function EditActivityForm({
         {expense ? (
           <div className="flex items-center gap-1.5 text-xs font-medium bg-white border border-border rounded-lg px-2.5 py-1.5 w-fit">
             <span>{categoryById.get(expense.category_id ?? "")?.emoji ?? "💰"}</span>
-            <span>{formatBRL(Number(expense.amount_brl))}</span>
-            <span className="text-muted">lançado nas despesas</span>
+            <span>{formatCost(expense)}</span>
+            <span className="text-muted">
+              {expense.currency !== "BRL" ? "aguardando conversão na aba Despesas" : "lançado nas despesas"}
+            </span>
             <button
               type="button"
               onClick={() => onRemoveCost(expense)}
