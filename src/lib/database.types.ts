@@ -50,6 +50,7 @@ export interface Activity {
   title: string;
   type: ActivityType;
   location: string | null;
+  image_url: string | null;
   notes: string | null;
   status: ActivityStatus;
   created_by: string | null;
