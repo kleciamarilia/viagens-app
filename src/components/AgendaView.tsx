@@ -280,7 +280,7 @@ export default function AgendaView({
               <p className="text-xs text-muted italic">Nada planejado ainda.</p>
             )}
 
-            <ul className="space-y-1.5">
+            <ul className="space-y-3">
               {dayActivities.map((activity) =>
                 editingId === activity.id ? (
                   <li key={activity.id} className="rounded-lg border border-border bg-primary-soft/30 p-3">
@@ -305,46 +305,60 @@ export default function AgendaView({
                 ) : (
                   <li
                     key={activity.id}
-                    className="group rounded-lg px-2 py-1.5 hover:bg-primary-soft/60 transition cursor-pointer"
+                    className="group rounded-xl border border-border overflow-hidden hover:border-primary/50 transition cursor-pointer bg-white"
                     onClick={() => setEditingId(activity.id)}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-base shrink-0">{typeInfo(activity.type).emoji}</span>
-                      {activity.time && (
-                        <span className="text-xs text-muted font-mono shrink-0">
-                          {activity.time.slice(0, 5)}
-                        </span>
-                      )}
-                      <div className="flex-1 min-w-0 flex items-baseline flex-wrap gap-x-2">
-                        <span className="text-sm">{activity.title}</span>
-                        {activity.location && (
-                          <span className="text-xs text-muted">📍 {activity.location}</span>
-                        )}
-                        {(vouchersByActivity.get(activity.id)?.length ?? 0) > 0 && (
-                          <span className="text-xs text-muted">📎 {vouchersByActivity.get(activity.id)!.length}</span>
-                        )}
-                        {expenseByActivity.has(activity.id) && (
-                          <span className="text-xs text-muted">
-                            💰 {formatCost(expenseByActivity.get(activity.id)!)}
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeActivity(activity);
-                        }}
-                        className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0 px-1"
-                        aria-label="remover"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    {activity.notes && (
-                      <div className="text-xs text-muted/90 mt-1 pl-6 whitespace-pre-wrap break-words">
-                        📝 {activity.notes}
-                      </div>
+                    {activity.image_url && (
+                      <img
+                        src={activity.image_url}
+                        alt={activity.title}
+                        className="w-full h-40 sm:h-48 object-cover"
+                        loading="lazy"
+                      />
                     )}
+                    <div className="p-4">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xl shrink-0 leading-none mt-0.5">{typeInfo(activity.type).emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2 flex-wrap">
+                            {activity.time && (
+                              <span className="text-sm text-muted font-mono shrink-0">
+                                {activity.time.slice(0, 5)}
+                              </span>
+                            )}
+                            <span className="text-base font-semibold text-foreground leading-snug">{activity.title}</span>
+                          </div>
+                          {activity.location && (
+                            <p className="text-sm text-muted mt-1">📍 {activity.location}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-1">
+                            {(vouchersByActivity.get(activity.id)?.length ?? 0) > 0 && (
+                              <span className="text-xs text-muted">📎 {vouchersByActivity.get(activity.id)!.length} anexo(s)</span>
+                            )}
+                            {expenseByActivity.has(activity.id) && (
+                              <span className="text-xs text-muted">
+                                💰 {formatCost(expenseByActivity.get(activity.id)!)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeActivity(activity);
+                          }}
+                          className="text-muted hover:text-red-600 text-sm opacity-0 group-hover:opacity-100 transition shrink-0 px-1"
+                          aria-label="remover"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {activity.notes && (
+                        <p className="text-sm text-foreground/80 mt-3 pl-8 leading-relaxed whitespace-pre-wrap break-words">
+                          {activity.notes}
+                        </p>
+                      )}
+                    </div>
                   </li>
                 )
               )}
@@ -499,6 +513,7 @@ function EditActivityForm({
   const [type, setType] = useState<ActivityType>(activity.type);
   const [time, setTime] = useState(activity.time ? activity.time.slice(0, 5) : "");
   const [location, setLocation] = useState(activity.location ?? "");
+  const [imageUrl, setImageUrl] = useState(activity.image_url ?? "");
   const [notes, setNotes] = useState(activity.notes ?? "");
   const [uploading, setUploading] = useState(false);
   const [costEnabled, setCostEnabled] = useState(false);
@@ -516,6 +531,7 @@ function EditActivityForm({
       type,
       time: time || null,
       location: location.trim() || null,
+      image_url: imageUrl.trim() || null,
       notes: notes.trim() || null,
     });
     if (costEnabled && !expense) {
@@ -577,6 +593,16 @@ function EditActivityForm({
             className="w-full rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 bg-white"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-[11px] font-medium text-muted mb-0.5">Foto (URL)</label>
+        <input
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="opcional — cole o link de uma imagem"
+          className="w-full rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 bg-white"
+        />
       </div>
 
       <div>
