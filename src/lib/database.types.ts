@@ -12,6 +12,7 @@ export interface Trip {
   color: string;
   status: TripStatus;
   notes: string | null;
+  eur_rate: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

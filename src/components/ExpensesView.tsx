@@ -5,22 +5,40 @@ import { createClient } from "@/lib/supabase";
 import { formatBRL, formatDate } from "@/lib/format";
 import type { Expense, ExpenseCategory } from "@/lib/database.types";
 
-const CURRENCIES = ["BRL", "EUR", "USD", "GBP"];
+const CURRENCIES = ["EUR", "BRL", "USD", "GBP"];
 
 export default function ExpensesView({
   tripId,
+  eurRate,
   categories,
   expenses,
 }: {
   tripId: string;
+  eurRate: number | null;
   categories: ExpenseCategory[];
   expenses: Expense[];
 }) {
   const supabase = createClient();
   const [list, setList] = useState<Expense[]>(expenses);
   const [formOpen, setFormOpen] = useState(false);
-  const [convertingId, setConvertingId] = useState<string | null>(null);
-  const [convertValue, setConvertValue] = useState("");
+  const [rateInput, setRateInput] = useState(eurRate ? String(eurRate).replace(".", ",") : "");
+  const [savingRate, setSavingRate] = useState(false);
+
+  const rate = useMemo(() => {
+    const v = parseFloat(rateInput.replace(",", "."));
+    return !Number.isNaN(v) && v > 0 ? v : null;
+  }, [rateInput]);
+
+  function brlValue(expense: Expense) {
+    if (expense.currency === "EUR" && rate) return Number(expense.amount) * rate;
+    return Number(expense.amount_brl);
+  }
+
+  async function saveRate() {
+    setSavingRate(true);
+    await supabase.from("trips").update({ eur_rate: rate }).eq("id", tripId);
+    setSavingRate(false);
+  }
 
   const categoryById = useMemo(() => {
     const map = new Map<string, ExpenseCategory>();
@@ -28,18 +46,19 @@ export default function ExpensesView({
     return map;
   }, [categories]);
 
-  const total = useMemo(() => list.reduce((sum, e) => sum + Number(e.amount_brl), 0), [list]);
+  const total = useMemo(() => list.reduce((sum, e) => sum + brlValue(e), 0), [list, rate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const byCategory = useMemo(() => {
     const map = new Map<string, number>();
     for (const e of list) {
       const key = e.category_id ?? "sem-categoria";
-      map.set(key, (map.get(key) ?? 0) + Number(e.amount_brl));
+      map.set(key, (map.get(key) ?? 0) + brlValue(e));
     }
     return [...map.entries()]
       .map(([categoryId, value]) => ({ categoryId, value, category: categoryById.get(categoryId) }))
       .sort((a, b) => b.value - a.value);
-  }, [list, categoryById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, categoryById, rate]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, Expense[]>();
@@ -52,10 +71,11 @@ export default function ExpensesView({
       .map(([date, items]) => ({
         date,
         items,
-        total: items.reduce((s, e) => s + Number(e.amount_brl), 0),
+        total: items.reduce((s, e) => s + brlValue(e), 0),
       }))
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [list]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, rate]);
 
   async function addExpense(values: {
     description: string;
@@ -92,21 +112,33 @@ export default function ExpensesView({
     await supabase.from("expenses").delete().eq("id", expense.id);
   }
 
-  function startConvert(expense: Expense) {
-    setConvertingId(expense.id);
-    setConvertValue(Number(expense.amount_brl).toFixed(2).replace(".", ","));
-  }
-
-  async function saveConvert(expense: Expense) {
-    const value = parseFloat(convertValue.replace(",", "."));
-    if (Number.isNaN(value) || value <= 0) return;
-    setList((prev) => prev.map((e) => (e.id === expense.id ? { ...e, amount_brl: value } : e)));
-    setConvertingId(null);
-    await supabase.from("expenses").update({ amount_brl: value }).eq("id", expense.id);
-  }
-
   return (
     <div className="space-y-6">
+      <section className="rounded-xl border border-border bg-surface p-4 flex flex-wrap items-center gap-3">
+        <span className="text-xs font-semibold text-muted uppercase tracking-wide">
+          Cotação usada
+        </span>
+        <span className="text-sm text-muted">1 € =</span>
+        <span className="flex items-center gap-1">
+          <span className="text-sm text-muted">R$</span>
+          <input
+            inputMode="decimal"
+            value={rateInput}
+            onChange={(e) => setRateInput(e.target.value)}
+            onBlur={saveRate}
+            onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+            placeholder="5,94"
+            className="w-20 rounded-lg border border-border px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </span>
+        {savingRate && <span className="text-xs text-muted">salvando…</span>}
+        {!rate && (
+          <span className="text-xs text-muted italic">
+            defina a cotação pra converter os lançamentos em € automaticamente
+          </span>
+        )}
+      </section>
+
       <section className="grid sm:grid-cols-[220px_1fr] gap-4">
         <div className="rounded-xl border border-border bg-primary-dark text-white p-5 flex flex-col justify-center">
           <span className="text-xs uppercase tracking-wide text-white/70">Custo total</span>
@@ -176,6 +208,7 @@ export default function ExpensesView({
                 <ul className="divide-y divide-border">
                   {group.items.map((expense) => {
                     const cat = expense.category_id ? categoryById.get(expense.category_id) : undefined;
+                    const isEur = expense.currency === "EUR";
                     return (
                       <li key={expense.id} className="group flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-primary-soft/50 transition">
                         <span className="w-8 shrink-0 text-center">{cat?.emoji ?? "🔖"}</span>
@@ -185,39 +218,12 @@ export default function ExpensesView({
                             {expense.payment_method}
                           </span>
                         )}
-                        {expense.currency !== "BRL" && (
-                          <span className="text-xs text-muted shrink-0">
-                            {expense.currency} {Number(expense.amount).toFixed(2)}
-                          </span>
-                        )}
-                        {convertingId === expense.id ? (
-                          <span className="flex items-center gap-1 shrink-0">
-                            <input
-                              autoFocus
-                              inputMode="decimal"
-                              value={convertValue}
-                              onChange={(e) => setConvertValue(e.target.value)}
-                              onKeyDown={(e) => e.key === "Enter" && saveConvert(expense)}
-                              className="w-20 rounded-lg border border-border px-1.5 py-0.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
-                            />
-                            <button
-                              onClick={() => saveConvert(expense)}
-                              className="text-primary hover:text-primary-dark text-xs font-medium"
-                            >
-                              ok
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => expense.currency !== "BRL" && startConvert(expense)}
-                            className={`font-medium w-24 text-right shrink-0 ${
-                              expense.currency !== "BRL" ? "hover:underline decoration-dotted cursor-pointer" : "cursor-default"
-                            }`}
-                            title={expense.currency !== "BRL" ? "clique para converter pra R$" : undefined}
-                          >
-                            {formatBRL(Number(expense.amount_brl))}
-                          </button>
-                        )}
+                        <span className="font-medium w-20 text-right shrink-0">
+                          {isEur ? `€ ${Number(expense.amount).toFixed(2)}` : formatBRL(Number(expense.amount))}
+                        </span>
+                        <span className="text-xs text-muted w-24 text-right shrink-0">
+                          {isEur && !rate ? "sem cotação" : `≈ ${formatBRL(brlValue(expense))}`}
+                        </span>
                         <button
                           onClick={() => removeExpense(expense)}
                           className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0"
@@ -258,7 +264,7 @@ function AddExpenseForm({
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [date, setDate] = useState(today);
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("BRL");
+  const [currency, setCurrency] = useState("EUR");
   const [amountBrl, setAmountBrl] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
 
@@ -363,7 +369,7 @@ function AddExpenseForm({
         />
       </div>
 
-      {currency !== "BRL" && (
+      {currency !== "BRL" && currency !== "EUR" && (
         <div>
           <label className="block text-[11px] font-medium text-muted mb-0.5">Valor em R$</label>
           <input
@@ -377,7 +383,7 @@ function AddExpenseForm({
         </div>
       )}
 
-      <div className={currency !== "BRL" ? "sm:col-span-2" : "sm:col-span-3"}>
+      <div className={currency !== "BRL" && currency !== "EUR" ? "sm:col-span-2" : "sm:col-span-3"}>
         <label className="block text-[11px] font-medium text-muted mb-0.5">Forma de pagamento</label>
         <input
           value={paymentMethod}
