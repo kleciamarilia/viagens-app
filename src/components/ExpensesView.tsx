@@ -209,9 +209,13 @@ export default function ExpensesView({
           <h3 className="text-sm font-semibold text-muted uppercase tracking-wide">Lançamentos</h3>
           <button
             onClick={() => setFormOpen((v) => !v)}
-            className="text-xs font-medium text-primary hover:text-primary-dark border border-border rounded-lg px-2.5 py-1 hover:bg-primary-soft transition"
+            className={
+              formOpen
+                ? "text-sm font-medium text-muted hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition"
+                : "text-sm font-semibold text-white bg-primary hover:bg-primary-dark rounded-lg px-4 py-2 shadow-sm transition"
+            }
           >
-            {formOpen ? "cancelar" : "+ despesa"}
+            {formOpen ? "cancelar" : "+ Adicionar despesa"}
           </button>
         </div>
 
