@@ -14,14 +14,14 @@ export default function TripTabs({ tripId }: { tripId: string }) {
   ];
 
   return (
-    <nav className="flex gap-1 border-b border-border mt-4 -mb-px">
+    <nav className="flex gap-1 border-b border-border mt-4 -mb-px overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tabs.map((tab) => {
         const active = pathname?.startsWith(tab.href);
         return (
           <Link
             key={tab.href}
             href={tab.href}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+            className={`shrink-0 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
               active
                 ? "border-primary text-primary-dark"
                 : "border-transparent text-muted hover:text-foreground"
