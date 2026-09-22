@@ -49,6 +49,11 @@ export default function ExpensesView({
 
   const total = useMemo(() => list.reduce((sum, e) => sum + brlValue(e), 0), [list, rate]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const unconvertedCount = useMemo(
+    () => (rate ? 0 : list.filter((e) => e.currency === "EUR").length),
+    [list, rate]
+  );
+
   const byCategory = useMemo(() => {
     const map = new Map<string, number>();
     for (const e of list) {
@@ -162,6 +167,11 @@ export default function ExpensesView({
           <span className="text-xs uppercase tracking-wide text-white/70">Custo total</span>
           <span className="text-2xl font-semibold mt-1">{formatBRL(total)}</span>
           <span className="text-xs text-white/70 mt-1">{list.length} lançamento(s)</span>
+          {unconvertedCount > 0 && (
+            <span className="text-xs text-amber-200 mt-2 leading-snug">
+              ⚠️ {unconvertedCount} lançamento(s) em € sem cotação definida — este total ainda não reflete o valor real em R$
+            </span>
+          )}
         </div>
 
         <div className="rounded-xl border border-border bg-surface p-4">
