@@ -79,7 +79,7 @@ export default function ExpensesView({
         items,
         total: items.reduce((s, e) => s + brlValue(e), 0),
       }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((a, b) => b.date.localeCompare(a.date));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, rate]);
 
