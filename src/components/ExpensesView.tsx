@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { formatBRL, formatDate } from "@/lib/format";
 import type { Expense, ExpenseCategory } from "@/lib/database.types";
+import { exportExcel, exportPdf } from "@/lib/exportReport";
 
 const CURRENCIES = ["EUR", "BRL", "USD", "GBP"];
 
@@ -21,11 +22,17 @@ const OTHER = "__outro__";
 
 export default function ExpensesView({
   tripId,
+  tripName,
+  startDate,
+  endDate,
   eurRate,
   categories,
   expenses,
 }: {
   tripId: string;
+  tripName: string;
+  startDate: string;
+  endDate: string;
   eurRate: number | null;
   categories: ExpenseCategory[];
   expenses: Expense[];
@@ -36,6 +43,7 @@ export default function ExpensesView({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rateInput, setRateInput] = useState(eurRate ? String(eurRate).replace(".", ",") : "");
   const [savingRate, setSavingRate] = useState(false);
+  const [exporting, setExporting] = useState<"pdf" | "xlsx" | null>(null);
 
   const rate = useMemo(() => {
     const v = parseFloat(rateInput.replace(",", "."));
@@ -60,6 +68,20 @@ export default function ExpensesView({
   }, [categories]);
 
   const total = useMemo(() => list.reduce((sum, e) => sum + brlValue(e), 0), [list, rate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function runExport(kind: "pdf" | "xlsx") {
+    setExporting(kind);
+    try {
+      const input = { tripName, startDate, endDate, eurRate: rate, expenses: list, categories };
+      if (kind === "pdf") await exportPdf(input);
+      else await exportExcel(input);
+    } catch (err) {
+      console.error(err);
+      window.alert("Não consegui gerar o arquivo. Tente de novo.");
+    } finally {
+      setExporting(null);
+    }
+  }
 
   const unconvertedCount = useMemo(
     () => (rate ? 0 : list.filter((e) => e.currency === "EUR").length),
@@ -229,6 +251,23 @@ export default function ExpensesView({
             }
           >
             {formOpen ? "cancelar" : "+ Adicionar despesa"}
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button
+            onClick={() => runExport("pdf")}
+            disabled={exporting !== null || list.length === 0}
+            className="text-xs font-medium text-primary hover:text-primary-dark border border-border rounded-lg px-3 py-1.5 hover:bg-primary-soft transition disabled:opacity-50"
+          >
+            {exporting === "pdf" ? "gerando…" : "⬇ Exportar PDF"}
+          </button>
+          <button
+            onClick={() => runExport("xlsx")}
+            disabled={exporting !== null || list.length === 0}
+            className="text-xs font-medium text-primary hover:text-primary-dark border border-border rounded-lg px-3 py-1.5 hover:bg-primary-soft transition disabled:opacity-50"
+          >
+            {exporting === "xlsx" ? "gerando…" : "⬇ Exportar Excel"}
           </button>
         </div>
 
