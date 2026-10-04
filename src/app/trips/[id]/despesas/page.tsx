@@ -19,6 +19,9 @@ export default async function DespesasPage({
   return (
     <ExpensesView
       tripId={id}
+      tripName={(trip as Trip | null)?.name ?? "Viagem"}
+      startDate={(trip as Trip | null)?.start_date ?? ""}
+      endDate={(trip as Trip | null)?.end_date ?? ""}
       eurRate={(trip as Trip | null)?.eur_rate ?? null}
       categories={(categories ?? []) as ExpenseCategory[]}
       expenses={(expenses ?? []) as Expense[]}
