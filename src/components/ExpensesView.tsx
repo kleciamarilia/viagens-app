@@ -7,6 +7,18 @@ import type { Expense, ExpenseCategory } from "@/lib/database.types";
 
 const CURRENCIES = ["EUR", "BRL", "USD", "GBP"];
 
+const PAYMENT_METHODS = [
+  "Wise Rafael",
+  "Wise Lila",
+  "Revolut",
+  "Cartão C6",
+  "ARC",
+  "BTG",
+  "Nomad",
+  "Dinheiro",
+];
+const OTHER = "__outro__";
+
 export default function ExpensesView({
   tripId,
   eurRate,
@@ -325,7 +337,14 @@ function ExpenseForm({
       ? String(initial.amount_brl).replace(".", ",")
       : ""
   );
-  const [paymentMethod, setPaymentMethod] = useState(initial?.payment_method ?? "");
+  const initialPm = initial?.payment_method ?? "";
+  const [pmChoice, setPmChoice] = useState(
+    !initialPm ? "" : PAYMENT_METHODS.includes(initialPm) ? initialPm : OTHER
+  );
+  const [pmOther, setPmOther] = useState(
+    initialPm && !PAYMENT_METHODS.includes(initialPm) ? initialPm : ""
+  );
+  const paymentMethod = pmChoice === OTHER ? pmOther : pmChoice;
 
   function handleAmountChange(v: string) {
     setAmount(v);
@@ -357,7 +376,8 @@ function ExpenseForm({
       setDescription("");
       setAmount("");
       setAmountBrl("");
-      setPaymentMethod("");
+      setPmChoice("");
+      setPmOther("");
     }
   }
 
@@ -449,12 +469,28 @@ function ExpenseForm({
 
       <div className={needsBrlField ? "sm:col-span-2" : "sm:col-span-3"}>
         <label className="block text-[11px] font-medium text-muted mb-0.5">Forma de pagamento</label>
-        <input
-          value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value)}
-          placeholder="opcional — Ex: Cartão Nubank"
-          className="w-full rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-        />
+        <select
+          value={pmChoice}
+          onChange={(e) => setPmChoice(e.target.value)}
+          className="w-full rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 bg-white"
+        >
+          <option value="">— escolher —</option>
+          {PAYMENT_METHODS.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+          <option value={OTHER}>Outro…</option>
+        </select>
+        {pmChoice === OTHER && (
+          <input
+            required
+            value={pmOther}
+            onChange={(e) => setPmOther(e.target.value)}
+            placeholder="Qual? Ex: Inter"
+            className="mt-1.5 w-full rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        )}
       </div>
 
       <div className="flex gap-2">
