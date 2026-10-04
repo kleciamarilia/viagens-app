@@ -131,6 +131,7 @@ export default function ExpensesView({
   }
 
   async function removeExpense(expense: Expense) {
+    if (!window.confirm(`Excluir "${expense.description}"?`)) return;
     setList((prev) => prev.filter((e) => e.id !== expense.id));
     await supabase.from("expenses").delete().eq("id", expense.id);
   }
@@ -276,7 +277,7 @@ export default function ExpensesView({
                             e.stopPropagation();
                             removeExpense(expense);
                           }}
-                          className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0"
+                          className="text-muted hover:text-red-600 text-sm sm:text-xs sm:opacity-0 sm:group-hover:opacity-100 transition shrink-0 px-2 py-1"
                           aria-label="remover"
                         >
                           ✕

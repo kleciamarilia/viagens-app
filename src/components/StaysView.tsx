@@ -156,7 +156,7 @@ function StayCard({
           {!saved && <span className="text-[10px] text-accent">●</span>}
           <button
             onClick={onDelete}
-            className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition"
+            className="text-muted hover:text-red-600 text-sm sm:text-xs sm:opacity-0 sm:group-hover:opacity-100 transition px-2 py-1"
             aria-label="remover estadia"
           >
             ✕
