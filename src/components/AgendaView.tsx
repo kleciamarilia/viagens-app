@@ -339,7 +339,7 @@ export default function AgendaView({
                             e.stopPropagation();
                             removeActivity(activity);
                           }}
-                          className="text-muted hover:text-red-600 text-sm opacity-0 group-hover:opacity-100 transition shrink-0 px-1"
+                          className="text-muted hover:text-red-600 text-sm sm:opacity-0 sm:group-hover:opacity-100 transition shrink-0 px-2 py-1"
                           aria-label="remover"
                         >
                           ✕
@@ -614,7 +614,7 @@ function EditActivityForm({
                   e.stopPropagation();
                   onRemoveVoucher(v);
                 }}
-                className="text-muted hover:text-red-600 opacity-0 group-hover/voucher:opacity-100 transition"
+                className="text-muted hover:text-red-600 sm:opacity-0 sm:group-hover/voucher:opacity-100 transition"
               >
                 ✕
               </span>

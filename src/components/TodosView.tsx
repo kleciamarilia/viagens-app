@@ -127,7 +127,7 @@ function TodoItem({
       </div>
       <button
         onClick={() => onRemove(todo)}
-        className="text-muted hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition shrink-0"
+        className="text-muted hover:text-red-600 text-sm sm:text-xs sm:opacity-0 sm:group-hover:opacity-100 transition shrink-0 px-2 py-1"
         aria-label="remover"
       >
         ✕
